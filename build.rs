@@ -168,6 +168,10 @@ fn main() {
         kernel_file_name
     );
 
+    // Tell linker to use linkerscript and generate linker map
+    //println!("cargo:rustc-link-arg=--script=linker.ld");
+    //println!("cargo:rustc-link-arg=--Map=target/linker.map");
+
     // Display tmp file directory as warning
     println!("Artifacts dir: {}", out_dir.display());
     println!("cargo:rerun-if-env-changed=KERNEL");

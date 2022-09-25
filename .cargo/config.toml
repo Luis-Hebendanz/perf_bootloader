@@ -1,6 +1,3 @@
 [build]
-target = "i686-unknown-linux-gnu.json"
-
-[unstable]
-build-std-features = ["compiler-builtins-mem"]
-build-std = ["core", "compiler_builtins"]
+target = "i686-unknown-none"
+rustflags = ["-C", "link-arg=--script=linker.ld", "-C", "link-arg=--Map=target/linker.map"]
