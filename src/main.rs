@@ -1,10 +1,10 @@
 #![no_std]
 #![no_main]
-#![feature(global_asm)]
-#![feature(asm)]
 #![feature(test)]
 #![feature(bench_black_box)]
 
+use core::arch::asm;
+use core::arch::global_asm
 use bootloader::bootinfo::MemoryRegionType;
 use bootloader::mmu;
 use bootloader::{acpi, bootinfo};
