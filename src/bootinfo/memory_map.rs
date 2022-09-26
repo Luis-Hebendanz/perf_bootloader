@@ -44,12 +44,7 @@ impl MemoryMap {
 
     /// Returns true if supplied address is in a usable region
     pub fn get_region_by_addr(&self, addr: u64) -> Option<&MemoryRegion> {
-        for i in self.entries[0..self.next_entry_index()].iter() {
-            if i.range.intersects(addr) {
-                return Some(i);
-            }
-        }
-        None
+        self.entries[0..self.next_entry_index()].iter().find(|&i| i.range.intersects(addr))
     }
 
     pub fn partition_memory_region(

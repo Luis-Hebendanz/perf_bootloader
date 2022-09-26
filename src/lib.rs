@@ -7,7 +7,6 @@
 
 #![no_std]
 #![feature(abi_x86_interrupt)]
-#![feature(test)]
 #![feature(bench_black_box)]
 #![allow(clippy::missing_safety_doc)]
 
