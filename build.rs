@@ -22,14 +22,13 @@ fn main() {
         Err(_) => {
             eprintln!(
                 "The KERNEL environment variable must be set for building the bootloader.\n\n\
-                     If you use `bootimage` for building you need at least version 0.7.0. You can \
-                     update `bootimage` by running `cargo install bootimage --force`."
+                Make sure you are using glue_gun to build the kernel"
             );
-            process::exit(1);
+            process::exit(0);
         }
     });
 
-    eprintln!("Original kernel path: {:#?}", kernel.clone());
+    eprintln!("Original kernel path: {:#?}", kernel);
 
     let kernel_file_name = kernel
         .file_name()
@@ -69,7 +68,7 @@ fn main() {
         println!("Executing:\n {:#?}", cmd);
         let output = cmd.output().expect("failed to run llvm-size");
         let output_str = String::from_utf8_lossy(&output.stdout);
-        let second_line_opt = output_str.lines().skip(1).next();
+        let second_line_opt = output_str.lines().nth(1);
         let second_line = second_line_opt.expect("unexpected llvm-size line output");
         let text_size_opt = second_line.split_ascii_whitespace().next();
         let text_size = text_size_opt.expect("unexpected llvm-size output");
@@ -105,9 +104,8 @@ fn main() {
     let kernel_obj = out_dir.join(format!("kernel_bin-{}.o", kernel_file_name));
     {
         let stripped_kernel_name_replaced = stripped_kernel_file_name
-            .replace('-', "_")
-            .replace('.', "_")
-            .replace("/", "_");
+            .replace(['-', '.'], "_")
+            .replace('/', "_");
 
         // wrap
         let mut cmd = Command::new(&objcopy);
@@ -294,7 +292,6 @@ impl fmt::Debug for Elf64_Phdr {
 
 #[cfg(feature = "binary")]
 fn apply_type<T: Sized>(offset: u64, num_types: u64, buf: &[u8]) -> Result<&[T], ApplyTypeError> {
-    use std::convert::TryFrom;
     use ApplyTypeError::*;
     let type_size: usize = std::mem::size_of::<T>();
     let offset = usize::try_from(offset).map_err(|_| UsizeTransform)?;
@@ -313,7 +310,6 @@ fn apply_type_mut<T: Sized>(
     num_types: u64,
     buf: &mut [u8],
 ) -> Result<&mut [T], ApplyTypeError> {
-    use std::convert::TryFrom;
     use ApplyTypeError::*;
     let type_size: usize = std::mem::size_of::<T>();
     let offset = usize::try_from(offset).map_err(|_| UsizeTransform)?;
@@ -327,7 +323,7 @@ fn apply_type_mut<T: Sized>(
 }
 
 #[cfg(feature = "binary")]
-fn addr_to_seg_map(addr: u64, segments: &Vec<Elf64_Phdr>) -> Option<usize> {
+fn addr_to_seg_map(addr: u64, segments: &[Elf64_Phdr]) -> Option<usize> {
     for (i, seg) in segments.iter().enumerate() {
         let low_bar = seg.p_offset;
         let high_bar = seg.p_offset + seg.p_memsz;
@@ -363,7 +359,6 @@ enum ApplyTypeError {
  */
 #[cfg(feature = "binary")]
 fn pad_kernel(kernel: &std::path::PathBuf) {
-    use std::convert::TryFrom;
     use std::io::{Read, Seek, Write};
 
     eprintln!(
@@ -376,7 +371,7 @@ fn pad_kernel(kernel: &std::path::PathBuf) {
     let mut kernel_fd = std::fs::OpenOptions::new()
         .read(true)
         .write(true)
-        .open(&kernel)
+        .open(kernel)
         .expect("Could not open a filedescriptor to kernel");
     kernel_fd
         .read_to_end(&mut buf)
@@ -388,7 +383,7 @@ fn pad_kernel(kernel: &std::path::PathBuf) {
     let mut header;
     {
         let headers = apply_type::<Elf64Header>(0, 1, &buf).unwrap();
-        header = headers[0].clone();
+        header = headers[0];
 
         let magic = [
             0x7f, 0x45, 0x4c, 0x46, 0x02, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -421,9 +416,9 @@ fn pad_kernel(kernel: &std::path::PathBuf) {
 
         for pheader in pheaders {
             // LOAD Segment
-            segments.push(pheader.clone());
+            segments.push(*pheader);
             if pheader.p_type == 1 {
-                load_segments.push(pheader.clone());
+                load_segments.push(*pheader);
             }
         }
         load_segments.sort();
@@ -440,8 +435,8 @@ fn pad_kernel(kernel: &std::path::PathBuf) {
         }
 
         // Check that program header is included in first LOAD segment
-        if load_segments.iter().count() > 1
-            && load_segments.iter().nth(1).unwrap().p_offset <= header.e_phoff
+        if load_segments.len() > 1
+            && load_segments.get(1).unwrap().p_offset <= header.e_phoff
         {
             unsafe {
                 eprintln!("Programm header comes after LOAD2 segment. This is not supported.");
@@ -451,7 +446,7 @@ fn pad_kernel(kernel: &std::path::PathBuf) {
                 );
                 eprintln!(
                     "LOAD2 offset: {:#x}",
-                    read_unaligned(addr_of!(load_segments.iter().nth(0).unwrap().p_offset))
+                    read_unaligned(addr_of!(load_segments.get(0).unwrap().p_offset))
                 );
             }
             std::process::exit(1);
@@ -459,7 +454,7 @@ fn pad_kernel(kernel: &std::path::PathBuf) {
 
         unsafe {
             // Check that first load segment has virtual address 0x200000
-            if read_unaligned(addr_of!(load_segments.iter().nth(0).unwrap().p_vaddr)) != 0x200000 {
+            if read_unaligned(addr_of!(load_segments.get(0).unwrap().p_vaddr)) != 0x200000 {
                 panic!("Base address (first load segment) has to be 0x200000 = 2Mb");
             }
         }
@@ -563,7 +558,7 @@ fn pad_kernel(kernel: &std::path::PathBuf) {
         header_ref.e_shoff += already_padded_vec.iter().sum::<usize>() as u64;
 
         // Update header clone
-        header = header_ref.clone();
+        header = *header_ref;
     }
 
     // Update section offsets
@@ -613,14 +608,14 @@ fn pad_kernel(kernel: &std::path::PathBuf) {
             let str_table = &buf[offset..offset + str_table_sec.sh_size as usize];
             for section in sections {
                 let name = core::str::from_utf8(
-                    &str_table[section.sh_name as usize..]
+                    str_table[section.sh_name as usize..]
                         .split(|&c| c == 0)
                         .next()
                         .unwrap(),
                 )
                 .unwrap();
                 if name == ".bss" {
-                    bss_sec = Some(section.clone());
+                    bss_sec = Some(*section);
                 }
             }
         }

@@ -385,7 +385,6 @@ unsafe extern "C" fn bootloader_main(magic: u32, mboot2_info_ptr: u32) {
     // Allocate 8Mb stack space for every core
     // + 2 mb guard page at the end
     {
-        use core::convert::TryFrom;
         let allocator = pagetable::BootInfoFrameAllocator::new(&BOOT_INFO.memory_map);
         let stack_size = bootloader::TWO_MEG * 4;
         let guard_page = bootloader::TWO_MEG;
@@ -462,7 +461,6 @@ unsafe extern "C" fn bootloader_main(magic: u32, mboot2_info_ptr: u32) {
     // We would need a copy/clone of the memory map for the FrameAllocator and this oversteps the stack
     // we first need a proper stack guard to catch these kinds of bugs in the bootloader
     {
-        use core::convert::TryFrom;
         use pagetable::PageTable;
         use pagetable::PageTableFlags;
         let allocator = pagetable::BootInfoFrameAllocator::new(&BOOT_INFO.memory_map);

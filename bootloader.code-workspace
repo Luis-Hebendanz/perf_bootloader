@@ -7,13 +7,19 @@
 			"path": "../../kernel"
 		},
 		{
-			"path": "../x86"
+			"path": ".."
 		}
 	],
 	"settings": {
 		"rust-analyzer.checkOnSave.allTargets": false,
 		"rust-analyzer.checkOnSave.command": "clippy",
-		"rust-analyzer.checkOnSave.enable": true
+		"rust-analyzer.checkOnSave.enable": true,
+		"rust-analyzer.trace.extension": true,
+		"rust-analyzer.diagnostics.experimental.enable": false,
+		"rust-analyzer.cargo.features": [
+			"binary"
+		],
+		"rust-analyzer.diagnostics.enable": true
 
 	}
 }
