@@ -1,6 +1,6 @@
 [build]
 target = "i686-unknown-none.json"
-rustflags = ["-C", "link-arg=--script=linker.ld", "-C", "link-arg=--Map=target/linker.map"]
+#rustflags = ["-C", "link-arg=--script=linker.ld", "-C", "link-arg=--Map=target/linker.map"]
 
 [unstable]
 # cross compile core library for custom target

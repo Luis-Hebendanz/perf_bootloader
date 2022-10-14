@@ -7,7 +7,7 @@
 			"path": "../../kernel"
 		},
 		{
-			"path": ".."
+			"path": "../.."
 		}
 	],
 	"settings": {
@@ -19,7 +19,15 @@
 		"rust-analyzer.cargo.features": [
 			"binary"
 		],
-		"rust-analyzer.diagnostics.enable": true
+		"rust-analyzer.diagnostics.enable": true,
+		"rust-analyzer.inlayHints.typeHints.enable": false,
+		"rust-analyzer.inlayHints.lifetimeElisionHints.useParameterNames": false,
+		"rust-analyzer.inlayHints.lifetimeElisionHints.enable": "always",
+		"rust-analyzer.inlayHints.closureReturnTypeHints.enable": "always",
+		"rust-analyzer.lens.references.adt.enable": true,
+		"rust-analyzer.lens.references.method.enable": true,
+		"rust-analyzer.lens.references.trait.enable": true,
+		"rust-analyzer.restartServerOnConfigChange": true,
 
 	}
 }

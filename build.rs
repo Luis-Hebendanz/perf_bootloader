@@ -4,10 +4,18 @@ fn main() {}
 #[cfg(feature = "binary")]
 fn main() {
     use std::{
-        env,
+        env::{self},
         path::PathBuf,
         process::{self, Command},
     };
+
+    eprintln!("========= ENV VARS START ===========");
+    for (key, value) in env::vars() {
+        if key.starts_with("CARGO") || key == "OUT_DIR" || key == "DEBUG" || key == "PROFILE" {
+            eprint!("{key}: {value}, ");
+        }
+    }
+    eprintln!("\n========= ENV VARS END =============");
 
     let arch = std::env::var("CARGO_CFG_TARGET_ARCH").unwrap();
     if arch != "x86" {
@@ -20,10 +28,12 @@ fn main() {
     let kernel = PathBuf::from(match env::var("KERNEL") {
         Ok(kernel) => kernel,
         Err(_) => {
-            eprintln!(
-                "The KERNEL environment variable must be set for building the bootloader.\n\n\
-                Make sure you are using glue_gun to build the kernel"
+            println!("cargo:warning=The KERNEL environment variable must be set for building the bootloader.");
+            println!("cargo:warning=Make sure you are using 'glue_gun' to build the kernel");
+            println!(
+                "cargo:warning=Failed building. Only exiting with code zero for rust-analyzer"
             );
+
             process::exit(0);
         }
     });
@@ -65,7 +75,7 @@ fn main() {
     {
         let mut cmd = Command::new(llvm_size);
         cmd.arg(&kernel);
-        println!("Executing:\n {:#?}", cmd);
+        eprintln!("Executing: {:#?}", cmd);
         let output = cmd.output().expect("failed to run llvm-size");
         let output_str = String::from_utf8_lossy(&output.stdout);
         let second_line_opt = output_str.lines().nth(1);
@@ -85,11 +95,12 @@ fn main() {
         .tool(&llvm_tools::exe("llvm-objcopy"))
         .expect("llvm-objcopy not found in llvm-tools");
     {
+        // Strip kernel symbols
         let mut cmd = Command::new(&objcopy);
         cmd.arg("--strip-debug");
         cmd.arg(&kernel);
         cmd.arg(&stripped_kernel);
-        println!("Executing:\n {:#?}", cmd);
+        eprintln!("Executing: {:#?}", cmd);
         let exit_status = cmd
             .status()
             .expect("failed to run objcopy to strip debug symbols");
@@ -128,7 +139,7 @@ fn main() {
         cmd.current_dir(&out_dir);
         cmd.arg(&stripped_kernel_file_name);
         cmd.arg(&kernel_obj);
-        println!("Executing:\n {:#?}", cmd);
+        eprintln!("Executing: {:#?}", cmd);
         let exit_status = cmd.status().expect("failed to run objcopy");
         if !exit_status.success() {
             eprintln!("Error: Running objcopy failed");
@@ -151,7 +162,7 @@ fn main() {
         cmd.arg("crs");
         cmd.arg(&kernel_archive);
         cmd.arg(&kernel_obj);
-        println!("Executing:\n {:#?}", cmd);
+        eprintln!("Executing: {:#?}", cmd);
         let exit_status = cmd.status().expect("failed to run ar");
         if !exit_status.success() {
             eprintln!("Error: Running ar failed");
@@ -166,12 +177,29 @@ fn main() {
         kernel_file_name
     );
 
-    // Tell linker to use linkerscript and generate linker map
-    //println!("cargo:rustc-link-arg=--script=linker.ld");
-    //println!("cargo:rustc-link-arg=--Map=target/linker.map");
+    // Tell linker to use linkerscript
+    println!("cargo:rustc-link-arg=--script=linker.ld");
+
+    // Generate linker map in binary out directory 
+    {
+        let profile = env::var("PROFILE").expect("Couldn't find env var PROFILE");
+        let out_root: Option<PathBuf> = {
+            let mut tmp = None;
+            for dir in out_dir.ancestors() {
+                if dir.ends_with(profile.as_str()) {
+                    tmp = Some(PathBuf::from(dir));
+                }
+            }
+            tmp
+        };
+        println!(
+            "cargo:rustc-link-arg=--Map={}",
+            out_root.expect("Couldn't find OUT_ROOT").join("linker.map").display()
+        );
+    }
 
     // Display tmp file directory as warning
-    println!("Artifacts dir: {}", out_dir.display());
+    eprintln!("Artifacts: {}", out_dir.display());
     println!("cargo:rerun-if-env-changed=KERNEL");
     println!("cargo:rerun-if-changed={}", kernel.display());
     println!("cargo:rerun-if-changed=build.rs");
@@ -435,9 +463,7 @@ fn pad_kernel(kernel: &std::path::PathBuf) {
         }
 
         // Check that program header is included in first LOAD segment
-        if load_segments.len() > 1
-            && load_segments.get(1).unwrap().p_offset <= header.e_phoff
-        {
+        if load_segments.len() > 1 && load_segments.get(1).unwrap().p_offset <= header.e_phoff {
             unsafe {
                 eprintln!("Programm header comes after LOAD2 segment. This is not supported.");
                 eprintln!(
@@ -509,7 +535,10 @@ fn pad_kernel(kernel: &std::path::PathBuf) {
             + usize::try_from(last.p_filesz).unwrap()
             + already_padded;
 
-        eprintln!("Padding last load segment at {:#x} by: {:#x} bytes", index, pad_size);
+        eprintln!(
+            "Padding last load segment at {:#x} by: {:#x} bytes",
+            index, pad_size
+        );
 
         let zero = std::iter::repeat(0).take(pad_size);
         buf.splice(index..index, zero);
@@ -637,7 +666,7 @@ fn pad_kernel(kernel: &std::path::PathBuf) {
         }
     }
 
-    println!(
+    eprintln!(
         "Total padding: {} Kb",
         already_padded_vec.iter().sum::<usize>() / 1024
     );
@@ -648,6 +677,4 @@ fn pad_kernel(kernel: &std::path::PathBuf) {
         .write_all(buf.as_slice())
         .expect("Failed to pad kernel executable");
     kernel_fd.sync_all().unwrap();
-
-  
 }

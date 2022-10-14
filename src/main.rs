@@ -1,14 +1,13 @@
 #![no_std]
 #![no_main]
 #![feature(test)]
-#![feature(bench_black_box)]
 
 
-use core::arch::global_asm;
 use bootloader::bootinfo::MemoryRegionType;
 use bootloader::mmu;
 use bootloader::{acpi, bootinfo};
 use bootloader::{klog::LOGGER, pagetable, smp};
+use core::arch::global_asm;
 use core::convert::TryInto;
 use log::LevelFilter;
 
@@ -144,12 +143,24 @@ unsafe extern "C" fn bootloader_main(magic: u32, mboot2_info_ptr: u32) {
         }
     };
 
-    log::info!("name: {}", parsed_multiboot_headers.boot_loader_name_tag().unwrap().name() );
-    log::info!("cmd: {}", parsed_multiboot_headers.command_line_tag().unwrap().command_line());
+    log::info!(
+        "name: {}",
+        parsed_multiboot_headers
+            .boot_loader_name_tag()
+            .unwrap()
+            .name()
+    );
+    log::info!(
+        "cmd: {}",
+        parsed_multiboot_headers
+            .command_line_tag()
+            .unwrap()
+            .command_line()
+    );
 
-   for i in parsed_multiboot_headers.module_tags() {
-       log::info!("boot module cmdline {}", i.cmdline());
-   }
+    for i in parsed_multiboot_headers.module_tags() {
+        log::info!("boot module cmdline {}", i.cmdline());
+    }
 
     // Save smp trampoline addr to BOOT_INFO
     BOOT_INFO.smp_trampoline = &__smp_trampoline_start as *const usize as u32;
@@ -582,7 +593,8 @@ unsafe extern "C" fn bootloader_main(magic: u32, mboot2_info_ptr: u32) {
     // We assume first apic id is 0. Get the stack for core 0
     let stack_addr: u32 = BOOT_INFO.cores[0]
         .get_stack_start()
-        .expect("Forgot to instantiate kernel stack") -8;
+        .expect("Forgot to instantiate kernel stack")
+        - 8;
 
     log::info!("BSP stack start: {:#x}", stack_addr);
 

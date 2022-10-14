@@ -45,7 +45,8 @@ unsafe extern "C" fn smp_main() {
     // Get stack address for this core
     let stack_addr: u32 = core
         .get_stack_start()
-        .expect("Forgot to instantiate kernel stack")-8;
+        .expect("Forgot to instantiate kernel stack")
+        - 8;
     log::debug!("Stack addr: {:#x}", stack_addr);
 
     // Enable mmu features

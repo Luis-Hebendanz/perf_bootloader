@@ -7,7 +7,6 @@
 
 #![no_std]
 #![feature(abi_x86_interrupt)]
-#![feature(bench_black_box)]
 #![allow(clippy::missing_safety_doc)]
 
 // The dependencies here are set to target_arch = x86 because
